@@ -1,0 +1,325 @@
+#!/bin/sh
+set -euf
+
+##
+# Create a VirtualBox virtual machine
+#
+# Syntax:
+#
+#     vboxmanage-createvm-ubuntu \
+#     <iso path> <vm path> <hostname> <username> <password>
+#
+# Example:
+#
+#     vboxmanage-createvm-ubuntu \
+#     $HOME/iso/ubuntu-20.04-desktop-amd64.iso \
+#     $HOME/vm/ubuntu-20.04-desktop-amd64 \
+#     example.example.com \
+#     alice \
+#     secret
+#
+# The ISO path can be wherever you have the ISO file.
+#
+# The VM path is typically within your existing VirtualBox
+# virtual machine path, because this program will create the
+# disk drive file within that directory.
+#
+# Hostname default: example
+#
+# Username default: user
+#
+# Password default: secret 
+#
+#
+# ## Purpose
+#
+# The purpose of these settings is to do a simple setup
+# for new users, akin to a tutorial that is easy to change.
+#
+# This program is not attempting to be a full featured
+# installation such as with all settings configurable via
+# command line options.
+#
+# We welcome constructive feedback.
+#
+#
+# ## Settings
+#
+# This program uses our preferred settings, and you can
+# edit this program to use the settings that you want. 
+#
+# This program uses our organization's configuration:
+#
+#   * Ubuntu server current version
+#
+#   * United States English
+#
+#   * UTC time zone
+#
+#   * 20 GB drive
+#
+#   * 2 GB RAM
+#
+#
+# ## Related commands
+#
+# List vms:
+#
+#     vboxmanage list vms
+#
+# Delete a vm:
+#
+#     vboxmanage unregistervm <uuid> --delete
+#
+# Remove a vm that is inaccessible:
+#
+#     vboxmanage unregistervm <uuid>
+#
+# List drives:
+#
+#     vboxmanage list hdds
+#
+# Delete a drive:
+#
+#     vboxmanage closemedium <uuid> --delete
+#
+#
+# ## Formats for disks
+#
+# We typically use these formats:
+#
+#   * VMDK: VMWare uses VMDK as the default disk image format.
+#     Multipe VMDK versions and variations exist, so it’s important
+#     to understand which one you’re using and where it can be used.
+#
+#   * VDI: VirtualBox uses VDI as the default disk image format.
+#     VDI is not compatible with VMWare
+#
+#
+# ## Encryption
+#
+# Question: Are there performance and/or security advantages to using 
+# the VirtualBox Disk Encryption over Ubuntu disk encryption in the VM?
+#
+# Answer: As I understand it, a good point of the VirtualBox encryption is 
+# you can easily change your mind, encrypt a VM that isn't or decrypt a VM
+# which is, and use the result with VirtualBox. Making a decrypted image 
+# from an Ubuntu LUKS-encrypted one and vice-versa is likely possible but 
+# would be more complicated.
+#
+# Also, with the VirtualBox encryption you can store the encryption 
+# passphrase in the VB config outside of the VM, so you can boot the VM
+# without having to enter a decryption passphrase. Of course you have to
+# keep the VB config safe to avoid disclosure of the passphrase.
+#
+# Another benefit of using VirtualBox encryption is that you can securely
+# save the VM state to resume later. Encrypted VMs have their state file 
+# encrypted as well. In contrast, if you use Ubuntu full-disk encryption 
+# features of the guest, then saving the VM state will effectively leak 
+# the encryption key to the host's storage in the state file.
+#
+# See https://superuser.com/questions/1445735/virtualbox-disk-encryption-vs-ubuntu-vm-disk-encryption
+#
+#
+# ## How to encrypt
+#
+# To support VirtualBox Disk Encryption of the virtual machine, you need 
+# to install VirtualBox Extension Pack, available at the VirtualBox site.
+# 
+# The Extension Pack is not included by default, because it can contain 
+# system level software that could be potentially harmful to your system.
+#
+# The version of Extension Pack needs to match your VirtualBox version.
+# So in case of installation issues, try to shut down all your VMs, then
+# then upgrade your VirtualBox.
+#
+# After you install Extension Pack, the encrypt operation can use the
+# command-line interface with this syntax:
+#
+#     VBoxManage encryptmedium "uuid|filename" \
+#     --newpassword "file|-" \
+#     --cipher "cipher id" \
+#     --newpasswordid "id"
+#
+# See https://superuser.com/questions/1072752/how-to-encrypt-vm-box-via-vboxmanage
+#
+#
+# ## Other resources
+#
+# https://spin.atomicobject.com/2013/06/03/ovf-virtual-machine/
+#
+# https://github.com/jedi4ever/veewee
+#
+# ## Tracking
+#
+# * Command: vboxmanage-createvm-ubuntu
+# * Version: 2.0.0
+# * Created: 2018-10-20
+# * Updated: 2020-04-23
+# * License: GPL
+# * Contact: Joel Parker Henderson <joel@joelparkerhenderson.com>
+##
+
+## Input ISO path and VM path
+
+iso_path="${1:-$HOME/iso/ubuntu-20.04-desktop-amd64.iso}"
+vm_path="${2:-$HOME/vm/ubuntu-20.04-desktop-amd64}"
+hostname="${3:-example}"
+username="${4:-user}"
+password="${5:-secret}"
+
+iso=$(basename "$iso_path")
+iso_dir=$(dirname "$iso_path")
+
+vm=$(basename "$vm_path")
+vm_dir=$(dirname "$vm_path")
+
+## Helpers from sixarm-unix-shell-scripts
+
+# out: print output message to stdout
+out() { printf %s\\n "$*" ; }
+
+# err: print error message to stderr
+err() { >&2 printf %s\\n "$*" ; }
+
+# die: print error message to stderr, then exit with error code 1
+die() { >&2 printf %s\\n "$*" ; exit 1 ; }
+
+## Preflight
+
+[ -f "$iso_path" ] || die "Cannot find ISO file: $iso_path"
+[ -d "$vm_dir" ] || die "Cannot find VM directory: $vm_dir"
+
+## Configuration - you might want to change these
+
+# Disk drive: we prefer the disk drive format VMDK versus VDI
+dd="$vm.vmdk"
+
+# Use encryption: we prefer this off because we want flexibility
+use_encryption=false
+
+# Use auxiliary: this is a work in progress for the debian bug
+use_auxiliary=false
+
+# Fix Debian bug: this is a work in progress for Ubuntu server
+fix_debian_bug=false
+
+# If we're installing the server, then we need to deal with the
+# Debian bug, so we need to use an auxiliary directory somewhere.
+# We prefer creating the directory alongside the ISO file, because
+# we want to easily see the config files that the ISO is creating,
+# and we also want to keep the files so we have a record of the work.
+# Other developers may prefer to put the auxiliary directory into
+# a temporary directory and delete the directory after installation.
+
+if [ "$use_auxiliary" = true ]; then
+	auxiliary_base_path="$iso_path.auxiliary/"
+	mkdir -p "$auxiliary_base_path"
+fi
+
+## Create the VM
+
+VBoxManage createvm \
+--name "$vm" \
+--ostype Ubuntu_64 \
+--register
+
+VBoxManage createmedium \
+--filename "$vm_path/$dd" \
+--size 20480
+
+VBoxManage storagectl "$vm" \
+--name SATA \
+--add SATA \
+--controller IntelAhci
+
+VBoxManage storageattach "$vm" \
+--storagectl SATA \
+--port 0 \
+--device 0 \
+--type hdd \
+--medium "$vm_path/$dd"
+
+VBoxManage storagectl "$vm" \
+--name IDE \
+--add ide
+
+VBoxManage storageattach "$vm" \
+--storagectl IDE \
+--port 0 \
+--device 0 \
+--type dvddrive \
+--medium "$iso_path"
+
+VBoxManage modifyvm "$vm" \
+--memory 2048 \
+--vram 32
+
+VBoxManage modifyvm "$vm" \
+--ioapic on
+
+VBoxManage modifyvm "$vm" \
+--boot1 dvd \
+--boot2 disk \
+--boot3 none \
+--boot4 none
+
+# TODO: research how to create nics.
+#
+# VBoxManage modifyvm "$vm" \
+# --nic1 bridged \
+# --bridgeadapter1 wlan0 \
+# --nic2 nat \
+
+VBoxManage modifyvm "$vm" \
+--cpus 2
+
+if [ "$use_encryption" = true ]; then
+	password_path="$iso_path.password.txt"
+	echo "secret" > "$password_path"
+	VBoxManage encryptmedium "$vm_dir/$vm/$dd" \
+	--newpassword "$password_path" \
+	--cipher "AES-XTS256-PLAIN64" \
+	--newpasswordid "demo"
+fi
+
+if [ "$use_auxiliary" = true ]; then
+	VBoxManage unattended install "$vm" \
+	--auxiliary-base-path="$auxiliary_base_path" \
+	--iso="$iso_path" \
+	--hostname="$hostname" \
+	--user="$username" \
+	--password="$password" \
+	--country=US \
+	--locale=en_US \
+	--time-zone=UTC \
+	--post-install-command="sudo apt-get -y update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade"
+else
+	VBoxManage unattended install "$vm" \
+	--iso="$iso_path" \
+	--hostname="$hostname" \
+	--user="$username" \
+	--password="$password" \
+	--country=US \
+	--locale=en_US \
+	--time-zone=UTC \
+	--post-install-command="sudo apt-get -y update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade"
+fi
+
+# Fix Debian Stretch bug by changing the setup from wrong 
+# interactive menu installation to headless installation.
+# See https://www.virtualbox.org/ticket/18410
+#
+# This is needed for Ubuntu server, not for Ubuntu desktop.
+#
+# TODO: this currently doesn't work -- we welcome advice!
+
+if [ "$fix_debian_bug" = true ]; then
+	cp "${auxiliary_base_path}isolinux-txt.cfg" "${auxiliary_base_path}isolinux-txt.cfg.orig"
+	auxiliary_patch_file="$HOME/tmp/patch.diff"
+	patch "${auxiliary_base_path}isolinux-txt.cfg" < "${auxiliary_patch_file}"
+	cp "$HOME/tmp/isolinux-txt.cfg" "${auxiliary_base_path}isolinux-txt.cfg" 
+	sed -i.orig 's/^default vesa.*/default live-install/' "${auxiliary_base_path}isolinux-isolinux.cfg"
+fi
+
+VBoxManage startvm "$vm"
