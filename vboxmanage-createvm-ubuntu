@@ -164,7 +164,7 @@ set -euf
 
 iso_path="${1:-$HOME/iso/ubuntu-20.04-desktop-amd64.iso}"
 vm_path="${2:-$HOME/vm/ubuntu-20.04-desktop-amd64}"
-hostname="${3:-example}"
+hostname="${3:-exampe.example.com}"
 username="${4:-user}"
 password="${5:-secret}"
 
