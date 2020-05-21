@@ -6,14 +6,23 @@ set -euf
 #
 # Syntax:
 #
-#     vboxmanage-createvm-ubuntu \
+#     vboxmanage-createvm \
 #     <iso path> <vm path> <hostname> <username> <password>
 #
-# Example:
+# Example for Ubuntu desktop:
 #
-#     vboxmanage-createvm-ubuntu \
+#     vboxmanage-createvm \
 #     $HOME/iso/ubuntu-20.04-desktop-amd64.iso \
 #     $HOME/vm/ubuntu-20.04-desktop-amd64 \
+#     example.example.com \
+#     alice \
+#     secret
+#
+# Example for Fedora server:
+#
+#     vboxmanage-createvm \
+#     $HOME/iso/Fedora-Server-dvd-x86_64-32-1.6.iso \
+#     $HOME/vm/fedora-32-server-x86-64 \
 #     example.example.com \
 #     alice \
 #     secret
@@ -24,7 +33,7 @@ set -euf
 # virtual machine path, because this program will create the
 # disk drive file within that directory.
 #
-# Hostname default: example
+# Hostname default: example.example.com
 #
 # Username default: user
 #
@@ -50,7 +59,7 @@ set -euf
 #
 # This program uses our organization's configuration:
 #
-#   * Ubuntu server current version
+#   * Operating system current version
 #
 #   * United States English
 #
@@ -99,7 +108,7 @@ set -euf
 # ## Encryption
 #
 # Question: Are there performance and/or security advantages to using 
-# the VirtualBox Disk Encryption over Ubuntu disk encryption in the VM?
+# the VirtualBox Disk Encryption over OS disk encryption in the VM?
 #
 # Answer: As I understand it, a good point of the VirtualBox encryption is 
 # you can easily change your mind, encrypt a VM that isn't or decrypt a VM
@@ -162,9 +171,9 @@ set -euf
 
 ## Input ISO path and VM path
 
-iso_path="${1:-$HOME/iso/ubuntu-20.04-desktop-amd64.iso}"
-vm_path="${2:-$HOME/vm/ubuntu-20.04-desktop-amd64}"
-hostname="${3:-exampe.example.com}"
+iso_path="$1"  # e.g. $HOME/iso/ubuntu-20.04-desktop-amd64.iso
+vm_path="$2"   # e.g. $HOME/vm/ubuntu-20.04-desktop-amd64
+hostname="${3:-example.example.com}"
 username="${4:-user}"
 password="${5:-secret}"
 

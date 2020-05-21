@@ -1,15 +1,24 @@
-# Create a VirtualBox virtual machine for Ubuntu
+# Create a VirtualBox virtual machine for our preferred systems
 
 Syntax:
 
-    vboxmanage-createvm-ubuntu \
+    vboxmanage-createvm \
     <iso path> <vm path> <hostname> <username> <password>
 
-Example:
+Example for Ubuntu desktop:
 
-    vboxmanage-createvm-ubuntu \
+    vboxmanage-createvm \
     $HOME/iso/ubuntu-20.04-desktop-amd64.iso \
     $HOME/vm/ubuntu-20.04-desktop-amd64 \
+    example.example.com \
+    alice \
+    secret
+
+Example for Fedora server:
+
+    vboxmanage-createvm \
+    $HOME/iso/Fedora-Server-dvd-x86_64-32-1.6.iso \
+    $HOME/vm/fedora-32-server-x86-64 \
     example.example.com \
     alice \
     secret
@@ -20,7 +29,7 @@ The VM path is typically within your existing VirtualBox
 virtual machine path, because this program will create the
 disk drive file within that directory.
 
-Hostname default: example
+Hostname default: example.example.com
 
 Username default: user
 
@@ -46,7 +55,7 @@ edit this program to use the settings that you want.
 
 This program uses our organization's configuration:
 
-  * Ubuntu server current version
+  * Operating system current version
 
   * United States English
 
@@ -95,7 +104,7 @@ We typically use these formats:
 ## Encryption
 
 Question: Are there performance and/or security advantages to using 
-the VirtualBox Disk Encryption over Ubuntu disk encryption in the VM?
+the VirtualBox Disk Encryption over OS disk encryption in the VM?
 
 Answer: As I understand it, a good point of the VirtualBox encryption is 
 you can easily change your mind, encrypt a VM that isn't or decrypt a VM
@@ -149,9 +158,9 @@ https://github.com/jedi4ever/veewee
 
 ## Tracking
 
-* Command: vboxmanage-createvm-ubuntu
-* Version: 2.0.0
+* Command: vboxmanage-createvm
+* Version: 2.1.0
 * Created: 2018-10-20
-* Updated: 2020-04-23
+* Updated: 2020-05-21
 * License: GPL
 * Contact: Joel Parker Henderson <joel@joelparkerhenderson.com>
