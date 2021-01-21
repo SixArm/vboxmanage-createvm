@@ -2,38 +2,84 @@
 
 Syntax:
 
+    vboxmanage-createvm [options] <vm path> <iso path>
+
+Options:
+
+  * -o operating system type (example: Debian_64)
+
+  * -c cpu count (default: 1)
+
+  * -m memory size (default: 1024)
+
+  * -s storage size (default: 10240)
+
+  * -h hostname (default: my.example.com)
+ 
+  * -u username (default: user)
+
+  * -p password (default: secret)
+
+  * -z command to run post-install (example: "sudo apt-get upgrade")
+
+
+## Examples
+
+Here are some popular examples that use long descriptive VM names.
+
+For the VM name, we favor this naming convention:
+
+  * operating system, such as "debian" or "ubuntu"
+   
+  * version, such as "10.7.0" or "20.04"
+  
+  * flavor, such as "desktop" or "server" (optional)
+  
+  * architecture, such as "amd64" or "x86-64"
+
+Example for Debian network installation:
+
     vboxmanage-createvm \
-    <iso path> <vm path> <hostname> <username> <password>
+    $HOME/vm/debian-10.7.0-amd64 \
+    $HOME/iso/debian-10.7.0-amd64-netinst.iso
 
 Example for Ubuntu desktop:
 
-    vboxmanage-createvm \
-    $HOME/iso/ubuntu-20.04-desktop-amd64.iso \
+    vboxmanage-createvm Ubuntu_64 \
     $HOME/vm/ubuntu-20.04-desktop-amd64 \
-    example.example.com \
-    alice \
-    secret
+    $HOME/iso/ubuntu-20.04-desktop-amd64.iso
 
-Example for Fedora server:
+Example for Fedora server DVD installation:
 
     vboxmanage-createvm \
+    $HOME/vm/fedora-32.1.6-server-x86-64 \
     $HOME/iso/Fedora-Server-dvd-x86_64-32-1.6.iso \
-    $HOME/vm/fedora-32-server-x86-64 \
-    example.example.com \
-    alice \
-    secret
 
-The ISO path can be wherever you have the ISO file.
+Example for 2 CPUs, 2 gigabytes of memory, 20 gigabytes of storage:
+
+    vboxmanage-createvm -c 2 -m 2048 -s 20480 …
+
+
+## Paths
 
 The VM path is typically within your existing VirtualBox
 virtual machine path, because this program will create the
 disk drive file within that directory.
 
-Hostname default: example.example.com
+The ISO path can be wherever you have the ISO file.
 
-Username default: user
 
-Password default: secret 
+## Conventions
+
+Conventions for ease of use:
+
+  * The operating system type is automatically guessed 
+    if the VM path basename begins with Debian, Fedora, Ubuntu.
+    You can override this by using `-o`.
+
+  * The command that will run post-install is automatically set
+    if the `ostype` begins with Debian, Fedora, Ubuntu.
+    You can override this by using `-c`.
 
 
 ## Purpose
@@ -60,10 +106,6 @@ This program uses our organization's configuration:
   * United States English
 
   * UTC time zone
-
-  * 20 GB drive
-
-  * 2 GB RAM
 
 
 ## Related commands
@@ -159,8 +201,8 @@ https://github.com/jedi4ever/veewee
 ## Tracking
 
 * Command: vboxmanage-createvm
-* Version: 2.1.0
+* Version: 2.6.0
 * Created: 2018-10-20
-* Updated: 2020-05-21
-* License: GPL
-* Contact: Joel Parker Henderson <joel@joelparkerhenderson.com>
+* Updated: 2021-01-21T08:05:07Z
+* License: GPL-2.0-only
+* Contact: Joel Parker Henderson (https://joelparkerhenderson.com)

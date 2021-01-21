@@ -6,26 +6,69 @@ set -euf
 #
 # Syntax:
 #
-#     vboxmanage-createvm \
-#     <iso path> <vm path> <hostname> <username> <password>
+#     vboxmanage-createvm [options] <vm path> <iso path>
 #
-# Example for Ubuntu desktop:
+# Example:
+#
+#     vboxmanage-createvm my-vm debian-10.7.0-amd64-netinst.iso
+#
+# Options:
+#
+#   * -o operating system type (example: Debian_64)
+#
+#   * -c cpu count (default: 1)
+#
+#   * -m memory size in megabytes (default: 1024)
+#
+#   * -s storage size in megabytes (default: 10240)
+#
+#   * -h hostname (default: my.example.com)
+# 
+#   * -u username (default: user)
+#
+#   * -p password (default: secret)
+#
+#   * -z command to run post-install (example: "sudo apt-get upgrade")
+#
+#
+# ## Examples
+#
+# Here are some popular examples that use long descriptive VM names.
+#
+# For the VM name, we favor this naming convention:
+#
+#   * operating system, such as "debian" or "ubuntu"
+#   
+#   * version, such as "10.7.0" or "20.04"
+#  
+#   * flavor, such as "desktop" or "server" (optional)
+#  
+#   * architecture, such as "amd64" or "x86-64"
+#
+# Example for Debian network installation:
 #
 #     vboxmanage-createvm \
-#     $HOME/iso/ubuntu-20.04-desktop-amd64.iso \
+#     $HOME/vm/debian-10.7.0-amd64 \
+#     $HOME/iso/debian-10.7.0-amd64-netinst.iso
+#
+# Example for Ubuntu desktop installation:
+#
+#     vboxmanage-createvm \
 #     $HOME/vm/ubuntu-20.04-desktop-amd64 \
-#     example.example.com \
-#     alice \
-#     secret
+#     $HOME/iso/ubuntu-20.04-desktop-amd64.iso
 #
-# Example for Fedora server:
+# Example for Fedora server DVD installation:
 #
 #     vboxmanage-createvm \
-#     $HOME/iso/Fedora-Server-dvd-x86_64-32-1.6.iso \
-#     $HOME/vm/fedora-32-server-x86-64 \
-#     example.example.com \
-#     alice \
-#     secret
+#     $HOME/vm/fedora-32.1.6-server-x86-64 \
+#     $HOME/iso/Fedora-Server-dvd-x86_64-32-1.6.iso
+#
+# Example for 2 CPUs, 2 gigabytes of memory, 20 gigabytes of storage:
+#
+#     vboxmanage-createvm -c 2 -m 2048 -s 20480 …
+#
+#
+# ## Paths
 #
 # The ISO path can be wherever you have the ISO file.
 #
@@ -33,11 +76,18 @@ set -euf
 # virtual machine path, because this program will create the
 # disk drive file within that directory.
 #
-# Hostname default: example.example.com
 #
-# Username default: user
+# ## Conventions
 #
-# Password default: secret 
+# Conventions for ease of use:
+#
+#   * The operating system type is automatically guessed 
+#     if the VM path basename begins with Debian, Fedora, Ubuntu.
+#     You can override this by using `-o`.
+#
+#   * The command that will run post-install is automatically set
+#     if the `ostype` begins with Debian, Fedora, Ubuntu.
+#     You can override this by using `-c`.
 #
 #
 # ## Purpose
@@ -64,10 +114,6 @@ set -euf
 #   * United States English
 #
 #   * UTC time zone
-#
-#   * 20 GB drive
-#
-#   * 2 GB RAM
 #
 #
 # ## Related commands
@@ -161,27 +207,13 @@ set -euf
 #
 # ## Tracking
 #
-# * Command: vboxmanage-createvm-ubuntu
-# * Version: 2.0.0
+# * Command: vboxmanage-createvm
+# * Version: 2.6.0
 # * Created: 2018-10-20
-# * Updated: 2020-04-23
-# * License: GPL
-# * Contact: Joel Parker Henderson <joel@joelparkerhenderson.com>
+# * Updated: 2021-01-21T08:05:07Z
+# * License: GPL-2.0-only
+# * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
 ##
-
-## Input ISO path and VM path
-
-iso_path="$1"  # e.g. $HOME/iso/ubuntu-20.04-desktop-amd64.iso
-vm_path="$2"   # e.g. $HOME/vm/ubuntu-20.04-desktop-amd64
-hostname="${3:-example.example.com}"
-username="${4:-user}"
-password="${5:-secret}"
-
-iso=$(basename "$iso_path")
-iso_dir=$(dirname "$iso_path")
-
-vm=$(basename "$vm_path")
-vm_dir=$(dirname "$vm_path")
 
 ## Helpers from sixarm-unix-shell-scripts
 
@@ -194,10 +226,159 @@ err() { >&2 printf %s\\n "$*" ; }
 # die: print error message to stderr, then exit with error code 1
 die() { >&2 printf %s\\n "$*" ; exit 1 ; }
 
+## Variables - you might want to change these defaults
+
+vm_dir=
+vm_path=
+iso_dir=
+iso_path=
+ostype=
+cpus=1
+memory=1024
+vram=128
+storage_size=10240
+hostname="my.example.com"
+username="user"
+password="secret"
+post_install_command=
+
+while getopts o:c:m:s:h:u:p:z:? opt
+do
+    case $opt in
+	o)    ostype="$OPTARG";;
+	c)    cpus="$OPTARG";;
+    m)    memory="$OPTARG";;
+    s)    storage_size="$OPTARG";;
+    h)    hostname="$OPTARG";;
+    u)    username="$OPTARG";;
+    p)    password="$OPTARG";;
+	z)    post_install_command="$OPTARG";;
+    /?)    printf "Usage: %s: [-o operating system type] [-c cpu count] [-m memory size] [-s storage size] [-h hostname] [-u username] [-p password] args\n" $0
+          exit 2
+		  ;;
+    esac
+done
+shift $((OPTIND -1))
+
+## Input ISO path and VM path
+
+vm_path="$1"   # e.g. $HOME/vm/debian-10.7.0-amd64
+iso_path="$2"  # e.g. $HOME/iso/debian-10.7.0-amd64-netinst.iso
+
+vm=$(basename "$vm_path")
+vm_dir=$(dirname "$vm_path")
+
+iso=$(basename "$iso_path")
+iso_dir=$(dirname "$iso_path")
+
 ## Preflight
 
 [ -f "$iso_path" ] || die "Cannot find ISO file: $iso_path"
 [ -d "$vm_dir" ] || die "Cannot find VM directory: $vm_dir"
+
+## Conventions
+
+# To list all the operating system types:
+#
+#     VBoxManage list ostypes
+
+if [ -z "$ostype" ]; then
+	vm_lower=$(echo "$vm" | tr '[:upper:]' '[:lower:]')
+	case $vm_lower in
+		archlinux*)	   ostype="ArchLinux64";;
+		dos*)      	   ostype="DOS";;
+		debian*)   	   ostype="Debian_64";;
+		fedora*)   	   ostype="Fedora_64";;
+		freebsd*)  	   ostype="FreeBSD_64";;
+		gentoo*)   	   ostype="Gentoo_64";;
+		jrockit*)  	   ostype="JRockitVE";;
+		l4*)       	   ostype="L4";;
+		linux*)    	   ostype="Linux?";;
+		macos*)        ostype="MacOS_?";;
+		mandriva*) 	   ostype="Mandriva_64";;
+		netbsd*)   	   ostype="NetBSD_64";;
+		netware*)  	   ostype="Netware";;
+		openbsd*)  	   ostype="OpenBSD_64";;
+		opensolaris*)  ostype="OpenSolaris_64";;
+		opensuse*)     ostype="OpenSUSE_64";;
+		oracle*)       ostype="Oracle_64";;
+		os2*)          ostype="OS2?";;
+		qnx*)          ostype="QNX";;
+		solaris*)      ostype="Solaris_64";;
+		redhat*)       ostype="RedHat_64";;
+		turbolinux*)   ostype="Turbolinux_64";;
+		ubuntu*)       ostype="Ubuntu_64";;
+		vboxbs*)       ostype="VBoxBS_64";;
+		windows*)      ostype="Windows?";;
+		xandros*)      ostype="Xandros_64";;
+		#TODO et al.
+	esac
+fi
+
+if [ -z "$post_install_command" ]; then
+	case $ostype in
+		ArchLinux|ArchLinux64)
+			post_install_command="sudo pacman --sync --refresh; sudo pacman --sync --needed archlinux-keyring; sudo pacman --sync --sysupgrade"
+			;;
+		DOS)
+			;;
+		Debian|Debian_64)
+			post_install_command="sudo apt-get -y update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade"
+			;;
+		Fedora|Fedora_64)
+			post_install_command="sudo yum --assumeyes --obsolete update; sudo yum --assumeyes --obsolete upgrade; sudo yum --assumeyes clean"
+			;;
+		FreeBSD|FreeBSD_64)
+			post_install_command="sudo freebsd-update fetch; sudo freebsd-update install"
+			;;
+		Gentoo|Gentoo_64)
+			;;
+		JRockitVE)
+			;;
+		L4)
+			;;
+		Linux*)
+			;;
+		Mandriva|Mandriva_64)
+			;;
+		MacOS*)
+			;;
+		NetBSD|NetBSD_64)
+			post_install_command="sudo pkg_add -u"
+			;;
+		Netware)
+			;;
+		OpenBSD|OpenBSD_64)
+			post_install_command="sudo pkg_add -u"
+			;;
+		OpenSUSE|OpenSUSE_64)
+			;;
+		Oracle|Oracle_64)
+			;;
+		OS2*)
+			;;
+		Other|Other_64)
+			;;
+		QNX)
+			;;
+		RedHat|RedHat_64)
+			;;
+		Solaris|Solaris_64|Solaris11_64|OpenSolaris|OpenSolaris_64)
+			;;
+		Turbolinux|Turbolinux_64)
+			;;
+		Ubuntu|Ubuntu_64)
+			post_install_command="sudo apt-get -y update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade"
+			;;
+		VBoxBS_64)
+			;;
+		Windows*)
+			;;
+		Xandros|Xandros_64)
+			;;
+		#TODO et al.
+	esac
+fi
 
 ## Configuration - you might want to change these
 
@@ -207,7 +388,7 @@ dd="$vm.vmdk"
 # Use encryption: we prefer this off because we want flexibility
 use_encryption=false
 
-# Use auxiliary: this is a work in progress for the debian bug
+# Use auxiliary: this is a work in progress for the Debian bug
 use_auxiliary=false
 
 # Fix Debian bug: this is a work in progress for Ubuntu server
@@ -230,12 +411,12 @@ fi
 
 VBoxManage createvm \
 --name "$vm" \
---ostype Ubuntu_64 \
+--ostype "$ostype" \
 --register
 
 VBoxManage createmedium \
 --filename "$vm_path/$dd" \
---size 20480
+--size "$storage_size"
 
 VBoxManage storagectl "$vm" \
 --name SATA \
@@ -261,11 +442,17 @@ VBoxManage storageattach "$vm" \
 --medium "$iso_path"
 
 VBoxManage modifyvm "$vm" \
---memory 2048 \
---vram 32
+--cpus "$cpus"
+
+VBoxManage modifyvm "$vm" \
+--memory "$memory" \
+--vram "$vram"
 
 VBoxManage modifyvm "$vm" \
 --ioapic on
+
+VBoxManage modifyvm "$vm" \
+--nic1 nat
 
 VBoxManage modifyvm "$vm" \
 --boot1 dvd \
@@ -280,12 +467,9 @@ VBoxManage modifyvm "$vm" \
 # --bridgeadapter1 wlan0 \
 # --nic2 nat \
 
-VBoxManage modifyvm "$vm" \
---cpus 2
-
 if [ "$use_encryption" = true ]; then
 	password_path="$iso_path.password.txt"
-	echo "secret" > "$password_path"
+	echo "$password" > "$password_path"
 	VBoxManage encryptmedium "$vm_dir/$vm/$dd" \
 	--newpassword "$password_path" \
 	--cipher "AES-XTS256-PLAIN64" \
@@ -302,7 +486,7 @@ if [ "$use_auxiliary" = true ]; then
 	--country=US \
 	--locale=en_US \
 	--time-zone=UTC \
-	--post-install-command="sudo apt-get -y update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade"
+	--post-install-command="$post_install_command"
 else
 	VBoxManage unattended install "$vm" \
 	--iso="$iso_path" \
@@ -312,7 +496,7 @@ else
 	--country=US \
 	--locale=en_US \
 	--time-zone=UTC \
-	--post-install-command="sudo apt-get -y update && sudo apt-get -y upgrade && sudo apt-get -y dist-upgrade"
+	--post-install-command="$post_install_command"
 fi
 
 # Fix Debian Stretch bug by changing the setup from wrong 
@@ -330,5 +514,11 @@ if [ "$fix_debian_bug" = true ]; then
 	cp "$HOME/tmp/isolinux-txt.cfg" "${auxiliary_base_path}isolinux-txt.cfg" 
 	sed -i.orig 's/^default vesa.*/default live-install/' "${auxiliary_base_path}isolinux-isolinux.cfg"
 fi
+
+# Enable Remote Desktop Protocol (RDP).
+# Useful for administration on an headless environment.
+
+VBoxManage modifyvm "$vm" --vrde on
+VBoxManage modifyvm "$vm" --vrdemulticon on --vrdeport 10001
 
 VBoxManage startvm "$vm"
