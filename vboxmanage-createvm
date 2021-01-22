@@ -210,9 +210,9 @@ set -euf
 # ## Tracking
 #
 # * Command: vboxmanage-createvm
-# * Version: 2.7.0
+# * Version: 2.7.1
 # * Created: 2018-10-20
-# * Updated: 2021-01-22T02:04:48Z
+# * Updated: 2021-01-22T19:16:34Z
 # * License: GPL-2.0-only
 # * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
 ##
@@ -250,7 +250,6 @@ for arg; do
     shift
     case $arg in
 	--[[:alnum:]][-_[:alnum:]]*)
-	    key="${arg#--}"
 	    case $arg in
 		*=*)
 		    key="${key%%=*}"
@@ -260,6 +259,7 @@ for arg; do
 		    value=true
 		    ;;
 	    esac
+	    key="${arg#--}"
 	    key="${key//-/_}"
 	    eval "$key"=\$value
 	    ;;
@@ -292,8 +292,8 @@ iso_dir=$(dirname "$iso_path")
 #     VBoxManage list ostypes
 
 if [ -z "$ostype" ]; then
-	vm_lower=$(echo "$vm" | tr '[:upper:]' '[:lower:]')
-	case $vm_lower in
+	iso_lower=$(echo "$iso" | tr '[:upper:]' '[:lower:]')
+	case "$iso_lower" in
 		archlinux*)    ostype="ArchLinux64";;
 		dos*)          ostype="DOS";;
 		debian*)       ostype="Debian_64";;

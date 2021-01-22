@@ -6,7 +6,7 @@ Syntax:
 
 Options:
 
-  * --ostype= operating system type (example: Debian_64)
+  * --ostype= operating system type (default: autodetect via VM name)
 
   * --cpus= cpu count (default: 1)
 
@@ -203,8 +203,8 @@ https://github.com/jedi4ever/veewee
 ## Tracking
 
 * Command: vboxmanage-createvm
-* Version: 2.7.0
+* Version: 2.7.1
 * Created: 2018-10-20
-* Updated: 2021-01-22T02:04:48Z
+* Updated: 2021-01-22T19:16:34Z
 * License: GPL-2.0-only
 * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
