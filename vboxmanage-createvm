@@ -14,21 +14,23 @@ set -euf
 #
 # Options:
 #
-#   * -o operating system type (example: Debian_64)
+#   * --ostype= operating system type (example: Debian_64)
 #
-#   * -c cpu count (default: 1)
+#   * --cpus= cpu count (default: 1)
 #
-#   * -m memory size in megabytes (default: 1024)
+#   * --memory= memory size in megabytes (default: 1024)
 #
-#   * -s storage size in megabytes (default: 10240)
+#   * --vram= video RAM size in megabytes (default: 128)
 #
-#   * -h hostname (default: my.example.com)
+#   * --storage= storage size in megabytes (default: 10240)
+#
+#   * --hostname= (default: my.example.com)
 # 
-#   * -u username (default: user)
+#   * --username= (default: user)
 #
-#   * -p password (default: secret)
+#   * --password= (default: secret)
 #
-#   * -z command to run post-install (example: "sudo apt-get upgrade")
+#   * --post-install-command= (example: "sudo apt-get upgrade")
 #
 #
 # ## Examples
@@ -65,7 +67,7 @@ set -euf
 #
 # Example for 2 CPUs, 2 gigabytes of memory, 20 gigabytes of storage:
 #
-#     vboxmanage-createvm -c 2 -m 2048 -s 20480 …
+#     vboxmanage-createvm --cpus=2 --memory=2048 --storage=20480
 #
 #
 # ## Paths
@@ -208,9 +210,9 @@ set -euf
 # ## Tracking
 #
 # * Command: vboxmanage-createvm
-# * Version: 2.6.0
+# * Version: 2.7.0
 # * Created: 2018-10-20
-# * Updated: 2021-01-21T08:05:07Z
+# * Updated: 2021-01-22T02:04:48Z
 # * License: GPL-2.0-only
 # * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
 ##
@@ -236,29 +238,36 @@ ostype=
 cpus=1
 memory=1024
 vram=128
-storage_size=10240
+storage=10240
 hostname="my.example.com"
 username="user"
 password="secret"
 post_install_command=
 
-while getopts o:c:m:s:h:u:p:z:? opt
-do
-    case $opt in
-	o)    ostype="$OPTARG";;
-	c)    cpus="$OPTARG";;
-    m)    memory="$OPTARG";;
-    s)    storage_size="$OPTARG";;
-    h)    hostname="$OPTARG";;
-    u)    username="$OPTARG";;
-    p)    password="$OPTARG";;
-	z)    post_install_command="$OPTARG";;
-    /?)    printf "Usage: %s: [-o operating system type] [-c cpu count] [-m memory size] [-s storage size] [-h hostname] [-u username] [-p password] args\n" $0
-          exit 2
-		  ;;
+## Arg parse
+
+for arg; do
+    shift
+    case $arg in
+	--[[:alnum:]][-_[:alnum:]]*)
+	    key="${arg#--}"
+	    case $arg in
+		*=*)
+		    key="${key%%=*}"
+		    value="${arg#*=}";
+		    ;;
+		*)
+		    value=true
+		    ;;
+	    esac
+	    key="${key//-/_}"
+	    eval "$key"=\$value
+	    ;;
+	*)
+	    set -- "$@" "$arg"
+	    ;;
     esac
 done
-shift $((OPTIND -1))
 
 ## Input ISO path and VM path
 
@@ -285,20 +294,20 @@ iso_dir=$(dirname "$iso_path")
 if [ -z "$ostype" ]; then
 	vm_lower=$(echo "$vm" | tr '[:upper:]' '[:lower:]')
 	case $vm_lower in
-		archlinux*)	   ostype="ArchLinux64";;
-		dos*)      	   ostype="DOS";;
-		debian*)   	   ostype="Debian_64";;
-		fedora*)   	   ostype="Fedora_64";;
-		freebsd*)  	   ostype="FreeBSD_64";;
-		gentoo*)   	   ostype="Gentoo_64";;
-		jrockit*)  	   ostype="JRockitVE";;
-		l4*)       	   ostype="L4";;
-		linux*)    	   ostype="Linux?";;
+		archlinux*)    ostype="ArchLinux64";;
+		dos*)          ostype="DOS";;
+		debian*)       ostype="Debian_64";;
+		fedora*)       ostype="Fedora_64";;
+		freebsd*)      ostype="FreeBSD_64";;
+		gentoo*)       ostype="Gentoo_64";;
+		jrockit*)      ostype="JRockitVE";;
+		l4*)           ostype="L4";;
+		linux*)        ostype="Linux?";;
 		macos*)        ostype="MacOS_?";;
-		mandriva*) 	   ostype="Mandriva_64";;
-		netbsd*)   	   ostype="NetBSD_64";;
-		netware*)  	   ostype="Netware";;
-		openbsd*)  	   ostype="OpenBSD_64";;
+		mandriva*)     ostype="Mandriva_64";;
+		netbsd*)       ostype="NetBSD_64";;
+		netware*)      ostype="Netware";;
+		openbsd*)      ostype="OpenBSD_64";;
 		opensolaris*)  ostype="OpenSolaris_64";;
 		opensuse*)     ostype="OpenSUSE_64";;
 		oracle*)       ostype="Oracle_64";;
@@ -311,72 +320,37 @@ if [ -z "$ostype" ]; then
 		vboxbs*)       ostype="VBoxBS_64";;
 		windows*)      ostype="Windows?";;
 		xandros*)      ostype="Xandros_64";;
-		#TODO et al.
 	esac
 fi
 
 if [ -z "$post_install_command" ]; then
 	case $ostype in
-		ArchLinux|ArchLinux64)
-			post_install_command="sudo pacman --sync --refresh; sudo pacman --sync --needed archlinux-keyring; sudo pacman --sync --sysupgrade"
-			;;
-		DOS)
-			;;
-		Debian|Debian_64)
-			post_install_command="sudo apt-get -y update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade"
-			;;
-		Fedora|Fedora_64)
-			post_install_command="sudo yum --assumeyes --obsolete update; sudo yum --assumeyes --obsolete upgrade; sudo yum --assumeyes clean"
-			;;
-		FreeBSD|FreeBSD_64)
-			post_install_command="sudo freebsd-update fetch; sudo freebsd-update install"
-			;;
-		Gentoo|Gentoo_64)
-			;;
-		JRockitVE)
-			;;
-		L4)
-			;;
-		Linux*)
-			;;
-		Mandriva|Mandriva_64)
-			;;
-		MacOS*)
-			;;
-		NetBSD|NetBSD_64)
-			post_install_command="sudo pkg_add -u"
-			;;
-		Netware)
-			;;
-		OpenBSD|OpenBSD_64)
-			post_install_command="sudo pkg_add -u"
-			;;
-		OpenSUSE|OpenSUSE_64)
-			;;
-		Oracle|Oracle_64)
-			;;
-		OS2*)
-			;;
-		Other|Other_64)
-			;;
-		QNX)
-			;;
-		RedHat|RedHat_64)
-			;;
-		Solaris|Solaris_64|Solaris11_64|OpenSolaris|OpenSolaris_64)
-			;;
-		Turbolinux|Turbolinux_64)
-			;;
-		Ubuntu|Ubuntu_64)
-			post_install_command="sudo apt-get -y update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade"
-			;;
-		VBoxBS_64)
-			;;
-		Windows*)
-			;;
-		Xandros|Xandros_64)
-			;;
-		#TODO et al.
+		ArchLinux|ArchLinux64)	post_install_command="sudo pacman --sync --refresh; sudo pacman --sync --needed archlinux-keyring; sudo pacman --sync --sysupgrade";;
+		DOS)	                : ;;
+		Debian|Debian_64) 	post_install_command="sudo apt-get -y update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade";;
+		Fedora|Fedora_64)	post_install_command="sudo yum --assumeyes --obsolete update; sudo yum --assumeyes --obsolete upgrade; sudo yum --assumeyes clean";;
+		FreeBSD|FreeBSD_64)	post_install_command="sudo freebsd-update fetch; sudo freebsd-update install";;
+		Gentoo|Gentoo_64)       : ;;
+		JRockitVE)		: ;;
+		L4)			: ;;
+		Linux*)			: ;;
+		Mandriva|Mandriva_64)   : ;;
+		MacOS*)			: ;;
+		NetBSD|NetBSD_64)	post_install_command="sudo pkg_add -u";;
+		Netware)	        : ;;
+		OpenBSD|OpenBSD_64)	post_install_command="sudo pkg_add -u";;
+		OpenSUSE|OpenSUSE_64)	: ;;
+		Oracle|Oracle_64)	: ;;
+		OS2*)			: ;;
+		Other|Other_64)		: ;;
+		QNX)			: ;;
+		RedHat|RedHat_64)	post_install_command="sudo yum --assumeyes --obsolete update; sudo yum --assumeyes --obsolete upgrade; sudo yum --assumeyes clean";;
+		Solaris|Solaris_64|Solaris11_64|OpenSolaris|OpenSolaris_64) : ;;
+		Turbolinux|Turbolinux_64) : ;;
+		Ubuntu|Ubuntu_64)	post_install_command="sudo apt-get -y update; sudo apt-get -y upgrade; sudo apt-get -y dist-upgrade";;
+		VBoxBS_64)              : ;;
+		Windows*)  		: ;;
+		Xandros|Xandros_64)	: ;;
 	esac
 fi
 
@@ -416,7 +390,7 @@ VBoxManage createvm \
 
 VBoxManage createmedium \
 --filename "$vm_path/$dd" \
---size "$storage_size"
+--size "$storage"
 
 VBoxManage storagectl "$vm" \
 --name SATA \

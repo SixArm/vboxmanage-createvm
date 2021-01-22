@@ -6,21 +6,23 @@ Syntax:
 
 Options:
 
-  * -o operating system type (example: Debian_64)
+  * --ostype= operating system type (example: Debian_64)
 
-  * -c cpu count (default: 1)
+  * --cpus= cpu count (default: 1)
 
-  * -m memory size (default: 1024)
+  * --memory= memory size in megabytes (default: 1024)
 
-  * -s storage size (default: 10240)
+  * --vram= video RAM size in megabytes (default: 128)
 
-  * -h hostname (default: my.example.com)
+  * --storage= storage size in megabytes (default: 10240)
+
+  * --hostname= (default: my.example.com)
  
-  * -u username (default: user)
+  * --username= (default: user)
 
-  * -p password (default: secret)
+  * --password= (default: secret)
 
-  * -z command to run post-install (example: "sudo apt-get upgrade")
+  * --post-install-command= (example: "sudo apt-get upgrade")
 
 
 ## Examples
@@ -201,8 +203,8 @@ https://github.com/jedi4ever/veewee
 ## Tracking
 
 * Command: vboxmanage-createvm
-* Version: 2.6.0
+* Version: 2.7.0
 * Created: 2018-10-20
-* Updated: 2021-01-21T08:05:07Z
+* Updated: 2021-01-22T02:04:48Z
 * License: GPL-2.0-only
 * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
