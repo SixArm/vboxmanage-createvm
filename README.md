@@ -6,7 +6,9 @@ Syntax:
 
 Options:
 
-  * --ostype= operating system type (default: autodetect via VM name)
+  * --verbose
+
+  * --ostype= operating system type (example: "Debian_64". default: autoset via ISO file name)
 
   * --cpus= cpu count (default: 1)
 
@@ -17,12 +19,20 @@ Options:
   * --storage= storage size in megabytes (default: 10240)
 
   * --hostname= (default: my.example.com)
- 
+
   * --username= (default: user)
 
   * --password= (default: secret)
 
-  * --post-install-command= (example: "sudo apt-get upgrade")
+  * --post-install-command= (example: "sudo apt-get upgrade". default: autoset via `ostype`)
+
+  * --use-auxiliary Use auxiliary installation
+
+  * --use-encryption Use encryption of storage
+
+  * --use-vrde Use VirtualBox Remote Desktop Extension (VRDE)
+
+  * --fix-debian Workaround for a Debian installation bug
 
 
 ## Examples
@@ -32,11 +42,11 @@ Here are some popular examples that use long descriptive VM names.
 For the VM name, we favor this naming convention:
 
   * operating system, such as "debian" or "ubuntu"
-   
+
   * version, such as "10.7.0" or "20.04"
-  
+
   * flavor, such as "desktop" or "server" (optional)
-  
+
   * architecture, such as "amd64" or "x86-64"
 
 Example for Debian network installation:
@@ -75,7 +85,7 @@ The ISO path can be wherever you have the ISO file.
 
 Conventions for ease of use:
 
-  * The operating system type is automatically guessed 
+  * The operating system type is automatically guessed
     if the VM path basename begins with Debian, Fedora, Ubuntu.
     You can override this by using `-o`.
 
@@ -99,15 +109,37 @@ We welcome constructive feedback.
 ## Settings
 
 This program uses our preferred settings, and you can
-edit this program to use the settings that you want. 
+edit this program to use the settings that you want.
 
 This program uses our organization's configuration:
 
-  * Operating system current version
+  * Operating system current version.
 
-  * United States English
+  * Country internationalization: United States.
 
-  * UTC time zone
+  * Language localization: American English.
+
+  * Time zone: UTC if possible, otherwise New York.
+
+We are working toward these:
+
+  * Enable Logical Volume Management (LVM).
+
+  * Enable partition separation of `/home`, `/var`, `/tmp`, etc.
+
+  * Enable GRUB or similar bootloader on the main disk drive.
+
+  * Disable unnecessary reporting to remote servers, such as metrics.
+
+We are working toward these:
+
+  * Install preselected software, such as installer defaults.
+
+  * Install standard system software, such as utilties.
+
+  * Do not install print services, such as printers, spoolers, etc.
+
+  * Do not install optional extras, such as codecs, servers, etc.
 
 
 ## Related commands
@@ -147,24 +179,24 @@ We typically use these formats:
 
 ## Encryption
 
-Question: Are there performance and/or security advantages to using 
+Question: Are there performance and/or security advantages to using
 the VirtualBox Disk Encryption over OS disk encryption in the VM?
 
-Answer: As I understand it, a good point of the VirtualBox encryption is 
+Answer: As I understand it, a good point of the VirtualBox encryption is
 you can easily change your mind, encrypt a VM that isn't or decrypt a VM
-which is, and use the result with VirtualBox. Making a decrypted image 
-from an Ubuntu LUKS-encrypted one and vice-versa is likely possible but 
+which is, and use the result with VirtualBox. Making a decrypted image
+from an Ubuntu LUKS-encrypted one and vice-versa is likely possible but
 would be more complicated.
 
-Also, with the VirtualBox encryption you can store the encryption 
+Also, with the VirtualBox encryption you can store the encryption
 passphrase in the VB config outside of the VM, so you can boot the VM
 without having to enter a decryption passphrase. Of course you have to
 keep the VB config safe to avoid disclosure of the passphrase.
 
 Another benefit of using VirtualBox encryption is that you can securely
-save the VM state to resume later. Encrypted VMs have their state file 
-encrypted as well. In contrast, if you use Ubuntu full-disk encryption 
-features of the guest, then saving the VM state will effectively leak 
+save the VM state to resume later. Encrypted VMs have their state file
+encrypted as well. In contrast, if you use Ubuntu full-disk encryption
+features of the guest, then saving the VM state will effectively leak
 the encryption key to the host's storage in the state file.
 
 See https://superuser.com/questions/1445735/rtualbox-disk-encryption-vs-ubuntu-vm-disk-encryption
@@ -172,10 +204,10 @@ See https://superuser.com/questions/1445735/rtualbox-disk-encryption-vs-ubuntu-v
 
 ## How to encrypt
 
-To support VirtualBox Disk Encryption of the virtual machine, you need 
+To support VirtualBox Disk Encryption of the virtual machine, you need
 to install VirtualBox Extension Pack, available at the VirtualBox site.
 
-The Extension Pack is not included by default, because it can contain 
+The Extension Pack is not included by default, because it can contain
 system level software that could be potentially harmful to your system.
 
 The version of Extension Pack needs to match your VirtualBox version.
@@ -203,8 +235,8 @@ https://github.com/jedi4ever/veewee
 ## Tracking
 
 * Command: vboxmanage-createvm
-* Version: 2.7.1
-* Created: 2018-10-20
-* Updated: 2021-01-22T19:16:34Z
+* Version: 3.0.0
+* Created: 2018-10-20T00:00:00Z
+* Updated: 2021-01-22T22:03:10Z
 * License: GPL-2.0-only
 * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)

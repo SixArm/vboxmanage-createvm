@@ -14,7 +14,9 @@ set -euf
 #
 # Options:
 #
-#   * --ostype= operating system type (example: Debian_64)
+#   * --verbose
+#
+#   * --ostype= operating system type (example: "Debian_64". default: autoset via ISO file name)
 #
 #   * --cpus= cpu count (default: 1)
 #
@@ -25,13 +27,20 @@ set -euf
 #   * --storage= storage size in megabytes (default: 10240)
 #
 #   * --hostname= (default: my.example.com)
-# 
+#
 #   * --username= (default: user)
 #
 #   * --password= (default: secret)
 #
-#   * --post-install-command= (example: "sudo apt-get upgrade")
+#   * --post-install-command= (example: "sudo apt-get upgrade". defaut: autoset via `ostype`)
 #
+#   * --use-auxiliary Use auxiliary installation
+#
+#   * --use-encryption Use encryption of storage
+#
+#   * --use-vrde Use VirtualBox Remote Desktop Extension (VRDE)
+#
+#   * --fix-debian Workaround for a Debian installation bug
 #
 # ## Examples
 #
@@ -40,11 +49,11 @@ set -euf
 # For the VM name, we favor this naming convention:
 #
 #   * operating system, such as "debian" or "ubuntu"
-#   
+#
 #   * version, such as "10.7.0" or "20.04"
-#  
+#
 #   * flavor, such as "desktop" or "server" (optional)
-#  
+#
 #   * architecture, such as "amd64" or "x86-64"
 #
 # Example for Debian network installation:
@@ -83,7 +92,7 @@ set -euf
 #
 # Conventions for ease of use:
 #
-#   * The operating system type is automatically guessed 
+#   * The operating system type is automatically guessed
 #     if the VM path basename begins with Debian, Fedora, Ubuntu.
 #     You can override this by using `-o`.
 #
@@ -107,15 +116,35 @@ set -euf
 # ## Settings
 #
 # This program uses our preferred settings, and you can
-# edit this program to use the settings that you want. 
+# edit this program to use the settings that you want.
 #
 # This program uses our organization's configuration:
 #
-#   * Operating system current version
+#   * Operating system current version.
 #
-#   * United States English
+#   * Country internationalization: United States.
 #
-#   * UTC time zone
+#   * Language localization: American English.
+#
+#   * Time zone: UTC if possible, otherwise New York.
+#
+# We are working toward these:
+#
+#   * Enable Logical Volume Management (LVM).
+#
+#   * Enable partition separation of `/home`, `/var`, `/tmp`, etc.
+#
+#   * Disable unnecessary reporting to remote servers, such as metrics.
+#
+# We are working toward these:
+#
+#   * Install standard system software, such as utilties.
+#
+#   * Install standard system software, such as utilties.
+#
+#   * Do not install print services, such as printers, spoolers, etc.
+#
+#   * Do not install extras, such as codecs, webservers, etc.
 #
 #
 # ## Related commands
@@ -155,24 +184,24 @@ set -euf
 #
 # ## Encryption
 #
-# Question: Are there performance and/or security advantages to using 
+# Question: Are there performance and/or security advantages to using
 # the VirtualBox Disk Encryption over OS disk encryption in the VM?
 #
-# Answer: As I understand it, a good point of the VirtualBox encryption is 
+# Answer: As I understand it, a good point of the VirtualBox encryption is
 # you can easily change your mind, encrypt a VM that isn't or decrypt a VM
-# which is, and use the result with VirtualBox. Making a decrypted image 
-# from an Ubuntu LUKS-encrypted one and vice-versa is likely possible but 
+# which is, and use the result with VirtualBox. Making a decrypted image
+# from an Ubuntu LUKS-encrypted one and vice-versa is likely possible but
 # would be more complicated.
 #
-# Also, with the VirtualBox encryption you can store the encryption 
+# Also, with the VirtualBox encryption you can store the encryption
 # passphrase in the VB config outside of the VM, so you can boot the VM
 # without having to enter a decryption passphrase. Of course you have to
 # keep the VB config safe to avoid disclosure of the passphrase.
 #
 # Another benefit of using VirtualBox encryption is that you can securely
-# save the VM state to resume later. Encrypted VMs have their state file 
-# encrypted as well. In contrast, if you use Ubuntu full-disk encryption 
-# features of the guest, then saving the VM state will effectively leak 
+# save the VM state to resume later. Encrypted VMs have their state file
+# encrypted as well. In contrast, if you use Ubuntu full-disk encryption
+# features of the guest, then saving the VM state will effectively leak
 # the encryption key to the host's storage in the state file.
 #
 # See https://superuser.com/questions/1445735/virtualbox-disk-encryption-vs-ubuntu-vm-disk-encryption
@@ -180,10 +209,10 @@ set -euf
 #
 # ## How to encrypt
 #
-# To support VirtualBox Disk Encryption of the virtual machine, you need 
+# To support VirtualBox Disk Encryption of the virtual machine, you need
 # to install VirtualBox Extension Pack, available at the VirtualBox site.
-# 
-# The Extension Pack is not included by default, because it can contain 
+#
+# The Extension Pack is not included by default, because it can contain
 # system level software that could be potentially harmful to your system.
 #
 # The version of Extension Pack needs to match your VirtualBox version.
@@ -210,9 +239,9 @@ set -euf
 # ## Tracking
 #
 # * Command: vboxmanage-createvm
-# * Version: 2.7.1
+# * Version: 3.0.0
 # * Created: 2018-10-20
-# * Updated: 2021-01-22T19:16:34Z
+# * Updated: 2021-01-22T22:03:10Z
 # * License: GPL-2.0-only
 # * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
 ##
@@ -244,22 +273,38 @@ username="user"
 password="secret"
 post_install_command=
 
+# Print verbose messages
+verbose=0 # false
+
+# Use auxiliary: this is a work in progress for the Debian bug
+use_auxiliary=0 # false
+
+# Use encryption: we prefer this off because we want flexibility
+use_encryption=0 # false
+
+# Use VirtualBox Remote Desktop Extension (VRDE).
+use_vrde=0 # false
+
+# Fix Debian: this is a workaround in progress for a Debian bug
+fix_debian=0 # false
+
+
 ## Arg parse
 
 for arg; do
     shift
     case $arg in
 	--[[:alnum:]][-_[:alnum:]]*)
+	    key="${arg#--}"
 	    case $arg in
 		*=*)
 		    key="${key%%=*}"
 		    value="${arg#*=}";
 		    ;;
 		*)
-		    value=true
+		    value=1 # true
 		    ;;
 	    esac
-	    key="${arg#--}"
 	    key="${key//-/_}"
 	    eval "$key"=\$value
 	    ;;
@@ -357,40 +402,37 @@ fi
 ## Configuration - you might want to change these
 
 # Disk drive: we prefer the disk drive format VMDK versus VDI
-dd="$vm.vmdk"
-
-# Use encryption: we prefer this off because we want flexibility
-use_encryption=false
-
-# Use auxiliary: this is a work in progress for the Debian bug
-use_auxiliary=false
-
-# Fix Debian bug: this is a work in progress for Ubuntu server
-fix_debian_bug=false
+storage_basename="$vm.vmdk"
+storage_pathname="$vm_path/$storage_basename"
+storage_size="$storage"
 
 # If we're installing the server, then we need to deal with the
 # Debian bug, so we need to use an auxiliary directory somewhere.
+#
 # We prefer creating the directory alongside the ISO file, because
 # we want to easily see the config files that the ISO is creating,
 # and we also want to keep the files so we have a record of the work.
+#
 # Other developers may prefer to put the auxiliary directory into
-# a temporary directory and delete the directory after installation.
+# a temporary directory, then delete the directory after installation.
 
-if [ "$use_auxiliary" = true ]; then
+if ((use_auxiliary)); then
 	auxiliary_base_path="$iso_path.auxiliary/"
 	mkdir -p "$auxiliary_base_path"
 fi
 
 ## Create the VM
 
+((verbose)) && out "Create virtual machine with name:$vm ostype:$ostype"
 VBoxManage createvm \
 --name "$vm" \
 --ostype "$ostype" \
 --register
 
+((verbose)) && out "Create storage medium with filename:$storage_pathname size:$storage_size"
 VBoxManage createmedium \
---filename "$vm_path/$dd" \
---size "$storage"
+--filename "$storage_pathname" \
+--size "$storage_size"
 
 VBoxManage storagectl "$vm" \
 --name SATA \
@@ -402,7 +444,7 @@ VBoxManage storageattach "$vm" \
 --port 0 \
 --device 0 \
 --type hdd \
---medium "$vm_path/$dd"
+--medium "$storage_pathname"
 
 VBoxManage storagectl "$vm" \
 --name IDE \
@@ -440,17 +482,21 @@ VBoxManage modifyvm "$vm" \
 # --nic1 bridged \
 # --bridgeadapter1 wlan0 \
 # --nic2 nat \
+#
+# TODO: fix "newpasswordid" item below, so it's not "demo"
 
-if [ "$use_encryption" = true ]; then
+if ((use_encryption)); then
+	((verbose)) && out "Use encryption"
 	password_path="$iso_path.password.txt"
 	echo "$password" > "$password_path"
-	VBoxManage encryptmedium "$vm_dir/$vm/$dd" \
+	VBoxManage encryptmedium "$storage_pathname" \
 	--newpassword "$password_path" \
 	--cipher "AES-XTS256-PLAIN64" \
 	--newpasswordid "demo"
 fi
 
-if [ "$use_auxiliary" = true ]; then
+if (($use_auxiliary)); then
+	((verbose)) && out "Unattended install with auxiliary"
 	VBoxManage unattended install "$vm" \
 	--auxiliary-base-path="$auxiliary_base_path" \
 	--iso="$iso_path" \
@@ -462,6 +508,7 @@ if [ "$use_auxiliary" = true ]; then
 	--time-zone=UTC \
 	--post-install-command="$post_install_command"
 else
+	((verbose)) && out "Unattended install"
 	VBoxManage unattended install "$vm" \
 	--iso="$iso_path" \
 	--hostname="$hostname" \
@@ -473,7 +520,7 @@ else
 	--post-install-command="$post_install_command"
 fi
 
-# Fix Debian Stretch bug by changing the setup from wrong 
+# Fix Debian Stretch bug by changing the setup from wrong
 # interactive menu installation to headless installation.
 # See https://www.virtualbox.org/ticket/18410
 #
@@ -481,18 +528,23 @@ fi
 #
 # TODO: this currently doesn't work -- we welcome advice!
 
-if [ "$fix_debian_bug" = true ]; then
+if ((fix_debian)); then
+	((verbose)) && out "Fix Debian bug involving itera"
 	cp "${auxiliary_base_path}isolinux-txt.cfg" "${auxiliary_base_path}isolinux-txt.cfg.orig"
 	auxiliary_patch_file="$HOME/tmp/patch.diff"
 	patch "${auxiliary_base_path}isolinux-txt.cfg" < "${auxiliary_patch_file}"
-	cp "$HOME/tmp/isolinux-txt.cfg" "${auxiliary_base_path}isolinux-txt.cfg" 
+	cp "$HOME/tmp/isolinux-txt.cfg" "${auxiliary_base_path}isolinux-txt.cfg"
 	sed -i.orig 's/^default vesa.*/default live-install/' "${auxiliary_base_path}isolinux-isolinux.cfg"
 fi
 
-# Enable Remote Desktop Protocol (RDP).
-# Useful for administration on an headless environment.
+# Use VirtualBox Remote Desktop Extension (VRDE).
+# This enables the VM to use Remote Desktop Protocol (RDP).
+# This is useful administration on an headless environment.
 
-VBoxManage modifyvm "$vm" --vrde on
-VBoxManage modifyvm "$vm" --vrdemulticon on --vrdeport 10001
+if ((use_vrde)); then
+	((verbose)) && out "Enable VirtualBox Remote Desktop Extension (VRDE)"
+	VBoxManage modifyvm "$vm" --vrde on
+	VBoxManage modifyvm "$vm" --vrdemulticon on --vrdeport 10001
+fi
 
 VBoxManage startvm "$vm"
