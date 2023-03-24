@@ -235,8 +235,8 @@ https://github.com/jedi4ever/veewee
 ## Tracking
 
 * Command: vboxmanage-createvm
-* Version: 3.0.0
+* Version: 3.1.0
 * Created: 2018-10-20T00:00:00Z
-* Updated: 2021-01-22T22:03:10Z
-* License: GPL-2.0-only
+* Updated: 2023-03-24T18:25:31Z
+* License: GPL-2.0 or GPL-3.0 or contact us for more
 * Contact: Joel Parker Henderson (https://joelparkerhenderson.com)
